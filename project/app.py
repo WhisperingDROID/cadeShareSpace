@@ -55,7 +55,8 @@ def login_required(f):
 def index():
     """Searches the database for entries, then displays them."""
     entries = db.session.query(Post).all()
-    return render_template("index.html", entries=entries)
+    username = session.get("username")   # Bryce added this line for logged in indication feature
+    return render_template("index.html", entries=entries, username=username) # Bryce added username=username for logged in indication feature
 
 
 @app.route("/add", methods=["POST"])
@@ -152,4 +153,4 @@ def search():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5001)
