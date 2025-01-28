@@ -1,26 +1,20 @@
-from project.app import db
+from flask_sqlalchemy import SQLAlchemy
 
+# Initialize the database
+db = SQLAlchemy()
 
-class Post(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    title = db.Column(db.String, nullable=False)
-    text = db.Column(db.String, nullable=False)
-
-    def __init__(self, title, text):
-        self.title = title
-        self.text = text
-
-    def __repr__(self):
-        return f"<title {self.title}>"
-
+# Define the User model
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String, nullable=False, unique=True)
     password = db.Column(db.String, nullable=False)
 
-    def __init__(self, name, password):
-        self.name = name
-        self.password = password
+# Define the Post model
+class Post(db.Model):
+    __table_args__ = {"extend_existing": True}  # Avoid redefinition errors
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title = db.Column(db.String, nullable=False)
+    text = db.Column(db.String, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
-    def __str__(self):
-        return f"Username: {self.name}"
+    user = db.relationship("User", backref=db.backref("posts", lazy=True))

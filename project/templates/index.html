@@ -49,16 +49,23 @@
 
     <br />
 
-    <ul class="entries">
-      {% for entry in entries %}
-      <li class="entry">
-        <h2 id="{{ entry.id }}">{{ entry.title }}</h2>
-        {{ entry.text|safe }}
-      </li>
-      {% else %}
-      <li><em>No entries yet. Add some!</em></li>
-      {% endfor %}
-    </ul>
+
+<ul class="entries">
+  {% for entry in entries %}
+  <li class="entry">
+      <h2 id="{{ entry.id }}">{{ entry.title }}</h2>
+      {{ entry.text|safe }}
+      <br>
+      <a href="{{ url_for('user_profile', user_id=entry.user_id) }}">
+          Posted by: {{ entry.user.name }}
+      </a>
+  </li>
+  {% else %}
+  <li><em>No entries yet. Add some!</em></li>
+  {% endfor %}
+</ul>
+
+
   </div>
   <script type="text/javascript" src="{{url_for('static', filename='main.js') }}"></script>
 </body>

@@ -1,0 +1,22 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ user.name }}'s Profile</title>
+</head>
+<body>
+    <h1>{{ user.name }}'s Profile</h1>
+    <ul>
+        {% for post in posts %}
+        <li>
+            <h2>{{ post.title }}</h2>
+            <p>{{ post.text }}</p>
+        </li>
+        {% else %}
+        <li><em>This user has no posts yet.</em></li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('index') }}">Back to Home</a>
+</body>
+</html>
+

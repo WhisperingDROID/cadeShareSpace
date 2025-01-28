@@ -13,12 +13,11 @@ from flask import (
     abort,
     jsonify,
 )
-from flask_sqlalchemy import SQLAlchemy
-
+from project.models import db, User, Post  # Import models directly from models.py
 
 basedir = Path(__file__).resolve().parent
 
-# configuration
+# Configuration
 DATABASE = "shareSpace.db"
 USERNAME = "admin"
 PASSWORD = "admin"
@@ -31,15 +30,14 @@ if url.startswith("postgres://"):
 SQLALCHEMY_DATABASE_URI = url
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-
-# create and initialize a new Flask app
+# Create and initialize a new Flask app
 app = Flask(__name__)
-# load the config
-app.config.from_object(__name__)
-# init sqlalchemy
-db = SQLAlchemy(app)
+app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = SQLALCHEMY_TRACK_MODIFICATIONS
+app.secret_key = SECRET_KEY
 
-from project import models
+# Initialize SQLAlchemy with the app
+db.init_app(app)
 
 
 def login_required(f):
@@ -56,16 +54,20 @@ def login_required(f):
 @app.route("/")
 def index():
     """Searches the database for entries, then displays them."""
-    entries = db.session.query(models.Post)
+    entries = db.session.query(Post).all()
     return render_template("index.html", entries=entries)
 
 
 @app.route("/add", methods=["POST"])
 def add_entry():
-    """Adds new post to the database."""
+    """Adds a new post to the database."""
     if not session.get("logged_in"):
         abort(401)
-    new_entry = models.Post(request.form["title"], request.form["text"])
+    user = db.session.query(User).filter_by(name=session.get("username")).first()
+    if not user:
+        abort(401, description="User not found")
+
+    new_entry = Post(title=request.form["title"], text=request.form["text"], user_id=user.id)
     db.session.add(new_entry)
     db.session.commit()
     flash("New entry was successfully posted")
@@ -77,34 +79,49 @@ def login():
     """User login/authentication/session management."""
     error = None
     if request.method == "POST":
-        user = db.session.query(models.User).filter_by(name=request.form["username"]).first()
-        if  not user or user.password != request.form["password"]:
+        user = db.session.query(User).filter_by(name=request.form["username"]).first()
+        if not user or user.password != request.form["password"]:
             error = "Invalid username or password"
         else:
             session["logged_in"] = True
+            session["username"] = user.name  # Store username in session
             flash("You were logged in")
             return redirect(url_for("index"))
     return render_template("login.html", error=error)
 
+
 @app.route("/newuser", methods=["GET", "POST"])
 def new_user():
+    """Allows the creation of a new user."""
     if request.method == "POST" and request.form.get("password") and request.form.get("username"):
-        newuser = models.User(request.form["username"], request.form["password"])
+        new_user = User(name=request.form["username"], password=request.form["password"])
         try:
-            db.session.add(newuser)
+            db.session.add(new_user)
             db.session.commit()
             session["logged_in"] = True
+            session["username"] = new_user.name  # Store username in session
             flash("New User Created")
             return redirect(url_for("index"))
         except Exception as e:
             return render_template("newuser.html", error="Error when adding user: " + str(e))
-    else:
-        return render_template("newuser.html")
+    return render_template("newuser.html")
+
+
+@app.route("/user/<int:user_id>")
+def user_profile(user_id):
+    """Displays a user's profile and their posts."""
+    user = db.session.query(User).get(user_id)
+    if not user:
+        abort(404, description="User not found")
+    posts = db.session.query(Post).filter_by(user_id=user_id).all()
+    return render_template("user_profile.html", user=user, posts=posts)
+
 
 @app.route("/logout")
 def logout():
-    """User logout/authentication/session management."""
+    """Logs out the current user."""
     session.pop("logged_in", None)
+    session.pop("username", None)
     flash("You were logged out")
     return redirect(url_for("index"))
 
@@ -112,11 +129,10 @@ def logout():
 @app.route("/delete/<int:post_id>", methods=["GET"])
 @login_required
 def delete_entry(post_id):
-    """Deletes post from database."""
+    """Deletes a post from the database."""
     result = {"status": 0, "message": "Error"}
     try:
-        new_id = post_id
-        db.session.query(models.Post).filter_by(id=new_id).delete()
+        db.session.query(Post).filter_by(id=post_id).delete()
         db.session.commit()
         result = {"status": 1, "message": "Post Deleted"}
         flash("The entry was deleted.")
@@ -127,12 +143,13 @@ def delete_entry(post_id):
 
 @app.route("/search/", methods=["GET"])
 def search():
+    """Search for posts."""
     query = request.args.get("query")
-    entries = db.session.query(models.Post)
+    entries = db.session.query(Post).all()
     if query:
         return render_template("search.html", entries=entries, query=query)
     return render_template("search.html")
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", port=5000)
