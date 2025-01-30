@@ -147,9 +147,10 @@ def search():
     """Search for posts."""
     query = request.args.get("query")
     entries = db.session.query(Post).all()
+    username = session.get("username") #used for logged in feature -Bryce
     if query:
-        return render_template("search.html", entries=entries, query=query)
-    return render_template("search.html")
+        return render_template("search.html", entries=entries, query=query, username=username) #username=username used for logged in feature -Bryce
+    return render_template("search.html", entries=entries, username=username) #entries=entries and username=username used for logged in feature -Bryce
 
 
 if __name__ == "__main__":
